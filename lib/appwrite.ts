@@ -1,3 +1,4 @@
+import { CreateUserParams, GetMenuParams, SignInParams } from "@/type";
 import {
   Account,
   Avatars,
@@ -7,19 +8,18 @@ import {
   Query,
   Storage,
 } from "react-native-appwrite";
-import { CreateUserParams, GetMenuParams, SignInParams } from "@/type";
 
 export const appwriteConfig = {
   endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT!,
   projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID!,
   platform: "com.jsm.foodordering",
   databaseId: "689f744f000ee7af7078",
-  bucketId: "68643e170015edaa95d7",
+  bucketId: "68a1ad51000764dd913b",
   userCollectionId: "689f74730001ef030bca",
-  categoriesCollectionId: "68643a390017b239fa0f",
-  menuCollectionId: "68643ad80027ddb96920",
-  customizationsCollectionId: "68643c0300297e5abc95",
-  menuCustomizationsCollectionId: "68643cd8003580ecdd8f",
+  categoriesCollectionId: "68a1a8360034ca521ce0",
+  menuCollectionId: "68a1a90a003d1fb9eb6a",
+  customizationsCollectionId: "68a1ab2e0026f4d3566a",
+  menuCustomizationsCollectionId: "68a1ac4800141ed473b6",
 };
 
 export const client = new Client();
@@ -34,33 +34,99 @@ export const databases = new Databases(client);
 export const storage = new Storage(client);
 const avatars = new Avatars(client);
 
+// Helper function to handle rate limiting with retry logic
+const withRetry = async (
+  fn: () => Promise<any>,
+  maxRetries = 3,
+  delay = 1000
+): Promise<any> => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      const isRateLimit =
+        error.message?.includes("rate limit") ||
+        error.message?.includes("Rate limit") ||
+        error.code === 429;
+
+      if (isRateLimit && i < maxRetries - 1) {
+        // Wait before retrying, with exponential backoff
+        const waitTime = delay * Math.pow(2, i);
+        console.log(`Rate limit hit, retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      // If it's a rate limit error on the last retry, provide a user-friendly message
+      if (isRateLimit) {
+        throw new Error(
+          "Too many login attempts. Please wait a few minutes before trying again."
+        );
+      }
+
+      throw error;
+    }
+  }
+};
+
 export const createUser = async ({
   email,
   password,
   name,
 }: CreateUserParams) => {
   try {
-    const newAccount = await account.create(ID.unique(), email, password, name);
-    if (!newAccount) throw Error;
+    return await withRetry(async () => {
+      // Check if there's an active session and delete it before creating new account
+      try {
+        await account.deleteSession("current");
+      } catch {
+        // No active session, which is fine
+      }
 
-    await signIn({ email, password });
+      const newAccount = await account.create(
+        ID.unique(),
+        email,
+        password,
+        name
+      );
+      if (!newAccount) throw Error;
 
-    const avatarUrl = avatars.getInitialsURL(name);
+      await signIn({ email, password });
 
-    return await databases.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId,
-      ID.unique(),
-      { email, name, accountId: newAccount.$id, avatar: avatarUrl }
-    );
-  } catch (e) {
-    throw new Error(e as string);
+      const avatarUrl = avatars.getInitialsURL(name);
+
+      return await databases.createDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.userCollectionId,
+        ID.unique(),
+        { email, name, accountId: newAccount.$id, avatar: avatarUrl }
+      );
+    });
+  } catch (e: any) {
+    throw new Error(e.message || (e as string));
   }
 };
 
 export const signIn = async ({ email, password }: SignInParams) => {
   try {
-    const session = await account.createEmailPasswordSession(email, password);
+    return await withRetry(async () => {
+      // Check if there's an active session and delete it
+      try {
+        await account.deleteSession("current");
+      } catch {
+        // No active session, which is fine
+      }
+
+      await account.createEmailPasswordSession(email, password);
+    });
+  } catch (e: any) {
+    throw new Error(e.message || (e as string));
+  }
+};
+
+export const signOut = async () => {
+  try {
+    await account.deleteSession("current");
   } catch (e) {
     throw new Error(e as string);
   }

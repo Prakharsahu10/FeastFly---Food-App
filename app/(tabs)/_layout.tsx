@@ -1,9 +1,9 @@
-import { Redirect, Slot, Tabs } from "expo-router";
+import { images } from "@/constants";
 import useAuthStore from "@/store/auth.store";
 import { TabBarIconProps } from "@/type";
-import { Image, Text, View } from "react-native";
-import { images } from "@/constants";
 import cn from "clsx";
+import { Redirect, Tabs } from "expo-router";
+import { Image, Text, View } from "react-native";
 
 const TabBarIcon = ({ focused, icon, title }: TabBarIconProps) => (
   <View className="tab-icon">

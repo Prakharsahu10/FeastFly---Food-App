@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import { User } from "@/type";
 import { getCurrentUser } from "@/lib/appwrite";
+import { User } from "@/type";
+import { create } from "zustand";
 
 type AuthState = {
   isAuthenticated: boolean;
@@ -29,7 +29,7 @@ const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await getCurrentUser();
 
-      if (user) set({ isAuthenticated: true, user: user as User });
+      if (user) set({ isAuthenticated: true, user: user as unknown as User });
       else set({ isAuthenticated: false, user: null });
     } catch (e) {
       console.log("fetchAuthenticatedUser error", e);

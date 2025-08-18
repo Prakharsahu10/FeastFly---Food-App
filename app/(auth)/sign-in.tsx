@@ -1,14 +1,15 @@
-import { View, Text, Button, Alert } from "react-native";
-import { Link, router } from "expo-router";
-import CustomInput from "@/components/CustomInput";
 import CustomButton from "@/components/CustomButton";
-import { useState } from "react";
+import CustomInput from "@/components/CustomInput";
 import { signIn } from "@/lib/appwrite";
 import * as Sentry from "@sentry/react-native";
+import { Link, router } from "expo-router";
+import { useState } from "react";
+import { Alert, Text, View } from "react-native";
 
 const SignIn = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
+  const [statusMessage, setStatusMessage] = useState("");
 
   const submit = async () => {
     const { email, password } = form;
@@ -20,13 +21,25 @@ const SignIn = () => {
       );
 
     setIsSubmitting(true);
+    setStatusMessage("");
 
     try {
       await signIn({ email, password });
 
-      router.replace("/");
+      router.replace("/(tabs)");
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      // Check if it's a rate limit error to provide specific guidance
+      if (error.message?.includes("Too many login attempts")) {
+        setStatusMessage(
+          "Rate limit reached. Please wait a few minutes before trying again."
+        );
+        Alert.alert(
+          "Rate Limited",
+          "Too many login attempts. Please wait a few minutes before trying again."
+        );
+      } else {
+        Alert.alert("Error", error.message);
+      }
       Sentry.captureEvent(error);
     } finally {
       setIsSubmitting(false);
@@ -51,6 +64,12 @@ const SignIn = () => {
         label="Password"
         secureTextEntry={true}
       />
+
+      {statusMessage ? (
+        <Text className="text-orange-500 text-sm text-center bg-orange-50 p-3 rounded">
+          {statusMessage}
+        </Text>
+      ) : null}
 
       <CustomButton title="Sign In" isLoading={isSubmitting} onPress={submit} />
 
