@@ -58,32 +58,54 @@ async function clearStorage(): Promise<void> {
 }
 
 async function uploadImageToStorage(imageUrl: string) {
-  const response = await fetch(imageUrl);
-  const blob = await response.blob();
+  try {
+    // For development, skip actual upload and use the original URL
+    // This avoids network issues during seeding
+    console.log(`Using direct URL for image: ${imageUrl}`);
+    return imageUrl;
 
-  const fileObj = {
-    name: imageUrl.split("/").pop() || `file-${Date.now()}.jpg`,
-    type: blob.type,
-    size: blob.size,
-    uri: imageUrl,
-  };
+    // Uncomment below if you want to actually upload images to storage
+    /*
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
 
-  const file = await storage.createFile(
-    appwriteConfig.bucketId,
-    ID.unique(),
-    fileObj
-  );
+    const fileObj = {
+      name: imageUrl.split("/").pop() || `file-${Date.now()}.jpg`,
+      type: blob.type,
+      size: blob.size,
+      uri: imageUrl,
+    };
 
-  return storage.getFileViewURL(appwriteConfig.bucketId, file.$id);
+    const file = await storage.createFile(
+      appwriteConfig.bucketId,
+      ID.unique(),
+      fileObj
+    );
+
+    return storage.getFileViewURL(appwriteConfig.bucketId, file.$id);
+    */
+  } catch (error: any) {
+    console.log(
+      `Failed to upload image, using original URL: ${imageUrl}`,
+      error.message
+    );
+    return imageUrl;
+  }
 }
 
 async function seed(): Promise<void> {
-  // 1. Clear all
+  console.log("🌱 Starting database seeding...");
+
+  // 1. Clear all collections (skip storage for now)
+  console.log("Clearing existing data...");
   await clearAll(appwriteConfig.categoriesCollectionId);
   await clearAll(appwriteConfig.customizationsCollectionId);
   await clearAll(appwriteConfig.menuCollectionId);
   await clearAll(appwriteConfig.menuCustomizationsCollectionId);
-  await clearStorage();
+  // Skip clearing storage since we're using direct URLs
+  // await clearStorage();
+
+  console.log("Creating categories...");
 
   // 2. Create Categories
   const categoryMap: Record<string, string> = {};

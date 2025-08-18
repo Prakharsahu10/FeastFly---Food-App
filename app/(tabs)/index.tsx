@@ -1,5 +1,7 @@
-import { SafeAreaView } from "react-native-safe-area-context";
+import cn from "clsx";
+import { Fragment, useState } from "react";
 import {
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -7,15 +9,38 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Fragment } from "react";
-import cn from "clsx";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import CartButton from "@/components/CartButton";
 import { images, offers } from "@/constants";
-import useAuthStore from "@/store/auth.store";
+import seed from "@/lib/seed";
 
 export default function Index() {
-  const { user } = useAuthStore();
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedDatabase = async () => {
+    Alert.alert(
+      "Seed Database",
+      "This will clear all existing data and add sample menu items. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Seed",
+          onPress: async () => {
+            setIsSeeding(true);
+            try {
+              await seed();
+              Alert.alert("Success", "Database seeded successfully!");
+            } catch (error: any) {
+              Alert.alert("Error", `Failed to seed database: ${error.message}`);
+            } finally {
+              setIsSeeding(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -68,20 +93,33 @@ export default function Index() {
         }}
         contentContainerClassName="pb-28 px-5"
         ListHeaderComponent={() => (
-          <View className="flex-between flex-row w-full my-5">
-            <View className="flex-start">
-              <Text className="small-bold text-primary">DELIVER TO</Text>
-              <TouchableOpacity className="flex-center flex-row gap-x-1 mt-0.5">
-                <Text className="paragraph-bold text-dark-100">India</Text>
-                <Image
-                  source={images.arrowDown}
-                  className="size-3"
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            </View>
+          <View>
+            {/* Temporary Seed Button for Development */}
+            <TouchableOpacity
+              onPress={handleSeedDatabase}
+              disabled={isSeeding}
+              className="bg-primary p-3 rounded-lg mb-4"
+            >
+              <Text className="text-white text-center font-bold">
+                {isSeeding ? "Seeding Database..." : "🌱 Seed Database (Dev)"}
+              </Text>
+            </TouchableOpacity>
 
-            <CartButton />
+            <View className="flex-between flex-row w-full my-5">
+              <View className="flex-start">
+                <Text className="small-bold text-primary">DELIVER TO</Text>
+                <TouchableOpacity className="flex-center flex-row gap-x-1 mt-0.5">
+                  <Text className="paragraph-bold text-dark-100">India</Text>
+                  <Image
+                    source={images.arrowDown}
+                    className="size-3"
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <CartButton />
+            </View>
           </View>
         )}
       />

@@ -8,11 +8,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Text,
   View,
 } from "react-native";
 
 export default function AuthLayout() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  // Show loading while checking authentication state
+  if (isLoading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <Text className="text-lg">Loading...</Text>
+      </View>
+    );
+  }
 
   if (isAuthenticated) return <Redirect href="/(tabs)" />;
 
